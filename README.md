@@ -14,15 +14,15 @@ Imagine you have your repo spread over several instances. You can use gohub to a
 ## How to use
 
 Just edit the config.json to your needs. A short example:
-You want to track the status of your Repository "repo" and the branch master. If there is an update to this branch you want to execute your shell script "niftyscript.sh".
+You want to track the status of your Repository "repo" and the branch master. If there is an update to this branch you want to execute your shell script "echo.sh".
 
 ```json
 {
     "Hooks":[
         {
-          "Repo":"repo",
+          "Repo":"user/repo",
           "Branch":"master",
-          "Shell":"niftyscript.sh"
+          "Shell":"echo.sh"
         }
     ]
 }
@@ -30,9 +30,14 @@ You want to track the status of your Repository "repo" and the branch master. If
 
 Now start the server with
   
-    go run main.go --port 6578
+    go run main.go logstream.go --port 6578
 
 and add a git-webhook for your.domain.com:6578/repo_master. Everytime you push to master, your script gets executed.
+
+## Testing with curl
+
+    echo '{"ref": "refs/heads/master", "after":"foobarbaz", "deleted":false,"repository":{"full_name":"user/repo"}}' > test_push
+    curl -H "Content-Type: application/json" -d @test_push localhost:6578/repo_master
 
 ## What about safety?
 
