@@ -1,9 +1,9 @@
 {
     "Hooks":[
         {
-            "Repo":"pabbix",
-            "Branch":"master",
-            "Shell":"date"
+          "Repo":"user/repo",
+          "Branch":"master",
+          "Shell":"echo.sh"
         }
     ]
 }
