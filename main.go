@@ -66,6 +66,11 @@ func setLog(logFile *string) {
 }
 
 func startWebserver() {
+	if *scriptsPath != "" {
+		log.Printf("Looking in %s for hook scripts", *scriptsPath)
+	} else {
+		log.Printf("Looking on $PATH for hook scripts")
+	}
 	log.Printf("Starting gohub on 0.0.0.0:%s", *port)
 	http.ListenAndServe(":"+*port, nil)
 }
@@ -131,8 +136,9 @@ func executeShell(shell string, args ...string) {
 	logStreamerOut := NewLogstreamer(stdOutLogger, prefix, false)
 	logStreameErr := NewLogstreamer(stdErrLogger, prefix, false)
 
-	logStreamerOut.Write([]byte(fmt.Sprintf("Running %s %s\n", shell, strings.Join(args, " "))))
-	cmd := exec.Command(shell, args...)
+	shellPath := *scriptsPath + shell
+	logStreamerOut.Write([]byte(fmt.Sprintf("Running %s %s\n", shellPath, strings.Join(args, " "))))
+	cmd := exec.Command(shellPath, args...)
 
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = logStreamerOut
@@ -164,9 +170,10 @@ func executeShell(shell string, args ...string) {
 }
 
 var (
-	port       = flag.String("port", "7654", "port to listen on")
-	configFile = flag.String("config", "./config.json", "config")
-	logFile    = flag.String("log", "", "log file")
+	port        = flag.String("port", "7654", "port to listen on")
+	configFile  = flag.String("config", "./config.json", "config")
+	logFile     = flag.String("log", "", "log file")
+	scriptsPath = flag.String("scriptsPath", "", "path to hook scripts")
 )
 
 func init() {
