@@ -2,6 +2,9 @@ package main
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -75,6 +78,29 @@ func startWebserver() {
 	http.ListenAndServe(":"+*port, nil)
 }
 
+func checkSignature(body []byte, r *http.Request) bool {
+	header := r.Header.Get("X-Hub-Signature")
+	splitHeader := strings.SplitN(header, "=", 2)
+	algo, signature := splitHeader[0], splitHeader[1]
+	if algo != "sha1" {
+		log.Printf("Not sha1")
+	}
+	key := []byte("cBaV3MWAYL8rpM")
+	mac := hmac.New(sha1.New, key)
+	mac.Write(body)
+	hash := mac.Sum(nil)
+	signatureBytes, err := hex.DecodeString(signature)
+	if err != nil {
+		log.Printf("Bad hex value in signature")
+		return false
+	}
+	checkResult := hmac.Equal(signatureBytes, hash)
+	if !checkResult {
+		log.Printf("Signature check failed %s != %s", hex.EncodeToString(signatureBytes), hex.EncodeToString(hash))
+	}
+	return checkResult
+}
+
 func addHandler() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		body, err := ioutil.ReadAll(r.Body)
@@ -83,6 +109,19 @@ func addHandler() {
 			return
 		}
 		defer r.Body.Close()
+		success := false
+		defer func() {
+			if success == false {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte("{\"status\":\"ERROR\"}"))
+			}
+		}()
+		w.Header().Set("Content-Type", "application/json")
+
+		if !checkSignature(body, r) {
+			return
+		}
+
 		decoder := json.NewDecoder(bytes.NewBuffer(body))
 		var data GithubJson
 		err = decoder.Decode(&data)
@@ -101,7 +140,7 @@ func addHandler() {
 		}
 
 		if hook.Shell == "" {
-			log.Printf("Unhandled webhook for %s branch %s.  Got:\n%s", data.Repository.FullName,
+			log.Printf("Shell command not set in webhook for %s branch %s.  Got:\n%s", data.Repository.FullName,
 				data.Ref, string(body))
 			return
 		}
@@ -113,8 +152,12 @@ func addHandler() {
 			go executeShell(hook.Shell, data.Repository.FullName, project, hook.Branch, "push", data.After)
 		} else {
 			log.Printf("Unhandled webhook for %s branch %s.  Got:\n%s", data.Repository.FullName,
-				hook.Branch, string(body))
+				data.Ref[11:], string(body))
+			return
 		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("{\"status\":\"OK\"}"))
+		success = true
 	})
 }
 
