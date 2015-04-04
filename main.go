@@ -85,7 +85,7 @@ func checkSignature(body []byte, r *http.Request) bool {
 	if algo != "sha1" {
 		log.Printf("Not sha1")
 	}
-	key := []byte("cBaV3MWAYL8rpM")
+	key := []byte(*githubSecret)
 	mac := hmac.New(sha1.New, key)
 	mac.Write(body)
 	hash := mac.Sum(nil)
@@ -213,10 +213,11 @@ func executeShell(shell string, args ...string) {
 }
 
 var (
-	port        = flag.String("port", "7654", "port to listen on")
-	configFile  = flag.String("config", "./config.json", "config")
-	logFile     = flag.String("log", "", "log file")
-	scriptsPath = flag.String("scriptsPath", "", "path to hook scripts")
+	port         = flag.String("port", "7654", "port to listen on")
+	configFile   = flag.String("config", "./config.json", "config")
+	logFile      = flag.String("log", "", "log file")
+	scriptsPath  = flag.String("scriptsPath", "", "path to hook scripts")
+	githubSecret = flag.String("secret", "", "github hook secret")
 )
 
 func init() {
