@@ -20,6 +20,23 @@ import (
 	"time"
 )
 
+///////////////////////////
+
+type LogWriter struct {
+}
+
+func NewLogWriter() *LogWriter {
+    lw := &LogWriter{}
+    return lw
+}
+
+func (lw LogWriter) Write (p []byte) (n int, err error) {
+    log.Print(string(p))
+    return len(p), nil
+}
+
+///////////////////////////
+
 type Repository struct {
 	Name     string
 	FullName string `json:"full_name"`
@@ -152,7 +169,7 @@ func addHandler() {
 			go executeShell(hook.Shell, data.Repository.FullName, project, hook.Branch, "push", data.After)
 		} else {
 			log.Printf("Unhandled webhook for %s branch %s.  Got:\n%s", data.Repository.FullName,
-				data.Ref[11:], string(body))
+				data.Ref, string(body))
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -162,6 +179,7 @@ func addHandler() {
 }
 
 func executeShell(shell string, args ...string) {
+	log.Printf("Script starting")
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	jobId := r.Uint32()
 
@@ -170,14 +188,15 @@ func executeShell(shell string, args ...string) {
 		commit = commit[:6]
 	}
 
-	prefix := fmt.Sprintf("repo=%s jobId=%s ref=%s ", args[0],
-		strconv.FormatInt(int64(jobId), 10), commit)
+	prefix := fmt.Sprintf("repo=%s jobId=%s ref=%s ", args[0], strconv.FormatInt(int64(jobId), 10), commit)
 
-	stdOutLogger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
-	stdErrLogger := log.New(os.Stderr, "", log.Ldate|log.Ltime)
+log.Println(prefix)
 
-	logStreamerOut := NewLogstreamer(stdOutLogger, prefix, false)
-	logStreameErr := NewLogstreamer(stdErrLogger, prefix, false)
+	//stdOutLogger := log.New(log, "", log.Ldate|log.Ltime)
+	//stdErrLogger := log.New(log, "", log.Ldate|log.Ltime)
+
+	logStreamerOut := NewLogWriter()
+	logStreameErr := NewLogWriter()
 
 	shellPath := *scriptsPath + shell
 	logStreamerOut.Write([]byte(fmt.Sprintf("Running %s %s\n", shellPath, strings.Join(args, " "))))
@@ -187,12 +206,16 @@ func executeShell(shell string, args ...string) {
 	cmd.Stdout = logStreamerOut
 	cmd.Stderr = logStreameErr
 
+	log.Printf("Before start")
 	err := cmd.Start()
 	if err != nil {
-		stdErrLogger.Println(err)
+	log.Printf("fuck %s", err.Error())
+		log.Println(err)
 	}
+	log.Printf("after start")
 
 	if err := cmd.Wait(); err != nil {
+	log.Printf("wait end: %s", err.Error())
 
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// The program has exited with an exit code != 0
@@ -205,11 +228,14 @@ func executeShell(shell string, args ...string) {
 				logStreamerOut.Write([]byte(fmt.Sprintf("Command finished with error: %v\n", err)))
 				return
 			}
+	log.Printf("Non-zero exit code")
 		} else {
 			logStreamerOut.Write([]byte(fmt.Sprintf("Command finished with error: %v\n", err)))
 			return
+	log.Printf("Zero exit code")
 		}
 	}
+	log.Printf("Script done")
 }
 
 var (
