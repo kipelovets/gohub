@@ -150,7 +150,7 @@ func addHandler() {
 
 		var hook Hook
 		for _, cfgHook := range config.Hooks {
-			if cfgHook.Repo == data.Repository.FullName {
+	 		if cfgHook.Repo == data.Repository.FullName && data.Ref == "refs/heads/" + cfgHook.Branch {
 				hook = cfgHook
 				break
 			}
