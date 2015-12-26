@@ -38,7 +38,6 @@ func (lw LogWriter) Write (p []byte) (n int, err error) {
 ///////////////////////////
 
 type Repository struct {
-	Name     string
 	FullName string `json:"full_name"`
 }
 
@@ -76,9 +75,17 @@ func loadConfig(configFile *string) {
 
 func setLog(logFile *string) {
 	if *logFile != "" {
-		log_handler, err := os.OpenFile(*logFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0777)
-		if err != nil {
-			panic("cannot write log")
+		var (
+			log_handler *os.File
+			err error
+		)
+		if *logFile == "-" {
+			log_handler = os.Stdout
+		} else {
+			log_handler, err = os.OpenFile(*logFile, os.O_APPEND | os.O_WRONLY | os.O_CREATE, 0777)
+			if err != nil {
+				panic("cannot write log")
+			}
 		}
 		log.SetOutput(log_handler)
 	}
@@ -97,6 +104,10 @@ func startWebserver() {
 
 func checkSignature(body []byte, r *http.Request) bool {
 	header := r.Header.Get("X-Hub-Signature")
+	if header == "" {
+		log.Printf("No signature header")
+		return false
+	}
 	splitHeader := strings.SplitN(header, "=", 2)
 	algo, signature := splitHeader[0], splitHeader[1]
 	if algo != "sha1" {
@@ -188,12 +199,7 @@ func executeShell(shell string, args ...string) {
 		commit = commit[:6]
 	}
 
-	prefix := fmt.Sprintf("repo=%s jobId=%s ref=%s ", args[0], strconv.FormatInt(int64(jobId), 10), commit)
-
-log.Println(prefix)
-
-	//stdOutLogger := log.New(log, "", log.Ldate|log.Ltime)
-	//stdErrLogger := log.New(log, "", log.Ldate|log.Ltime)
+	log.Println("Executing command repo=%s jobId=%s ref=%s ", args[0], strconv.FormatInt(int64(jobId), 10), commit)
 
 	logStreamerOut := NewLogWriter()
 	logStreameErr := NewLogWriter()
@@ -206,17 +212,12 @@ log.Println(prefix)
 	cmd.Stdout = logStreamerOut
 	cmd.Stderr = logStreameErr
 
-	log.Printf("Before start")
 	err := cmd.Start()
 	if err != nil {
-	log.Printf("fuck %s", err.Error())
 		log.Println(err)
 	}
-	log.Printf("after start")
 
 	if err := cmd.Wait(); err != nil {
-	log.Printf("wait end: %s", err.Error())
-
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// The program has exited with an exit code != 0
 
@@ -225,17 +226,15 @@ log.Println(prefix)
 			// defined for both Unix and Windows and in both cases has
 			// an ExitStatus() method with the same signature.
 			if _, ok := exiterr.Sys().(syscall.WaitStatus); ok {
-				logStreamerOut.Write([]byte(fmt.Sprintf("Command finished with error: %v\n", err)))
+				log.Printf("Command finished with error: %v\n", err)
 				return
 			}
-	log.Printf("Non-zero exit code")
 		} else {
-			logStreamerOut.Write([]byte(fmt.Sprintf("Command finished with error: %v\n", err)))
+			log.Printf("Command finished with error (2): %v\n", err)
 			return
-	log.Printf("Zero exit code")
 		}
 	}
-	log.Printf("Script done")
+	log.Printf("Command finished successfully")
 }
 
 var (
