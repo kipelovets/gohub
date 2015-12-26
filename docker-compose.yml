@@ -1,0 +1,9 @@
+gohub:
+    build: .
+    volumes:
+        - ./:/gohub
+    ports:
+        - 7654
+    environment:
+        VIRTUAL_HOST: gohub_test.docker
+        VIRTUAL_PORT: 7654
