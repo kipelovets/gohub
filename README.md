@@ -1,48 +1,31 @@
 gohub
 =====
 
-Forked from adjust/gohub.
+See original README at https://github.com/marina-lab/gohub and https://github.com/adjust/gohub
 
-## What is gohub?
+## Differences in this fork
 
-gohub is a little webserver written in go. He waits for webhook calls by github to run little shell commands.
+### Signature check
 
-## What is it good for?
+This fork adds additional security by providing a check for GitHub signature, provide GitHub webhook secret with --secret command line option.
 
-Imagine you have your repo spread over several instances. You can use gohub to automate updating all your cloned repos.
+### Hooks for different branches
 
-## How to use
+There is also an ability to define different hooks for different branches of the same repository.
 
-Just edit the config.json to your needs. A short example:
-You want to track the status of your Repository "repo" and the branch master. If there is an update to this branch you want to execute your shell script "echo.sh".
+### Stdout log
 
-```json
-{
-    "Hooks":[
-        {
-          "Repo":"user/repo",
-          "Branch":"master",
-          "Shell":"echo.sh"
-        }
-    ]
-}
-```
+You can provide "-" as logfile name to write logs to STDOUT
 
-Now start the server with
-  
-    go run main.go logstream.go --port 6578
+### Docker Compose test environment
 
-and add a git-webhook for your.domain.com:6578/repo_master. Everytime you push to master, your script gets executed.
+You can quickly spawn a test environment with:
 
-## Testing with curl
+    docker-compose up -d
+    
+This command compiles sources from current dir and launches `gohub` binary with `example.json` as config file (see `Dockerfile` and `docker-compose.yml` for details)
 
-    echo '{"ref": "refs/heads/master", "after":"foobarbaz", "deleted":false,"repository":{"full_name":"user/repo"}}' > test_push
-    curl -H "Content-Type: application/json" -d @test_push localhost:6578/repo_master
-
-## What about safety?
-
-Git webhooks use only 4 different ips for their webhooks. (207.97.227.253, 50.57.128.197, 108.171.174.178, 50.57.231.61) You can easily restrict access to your gohub server by using either a firewall or an equivalent nginx configuration.
-
+If you use `dinghy` you can access `http://gohub_test.docker:7654` or launch `test_hook.sh`
 
 ## License
 
