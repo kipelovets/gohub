@@ -32,3 +32,5 @@ Gemfile
 Gemfile.lock
 gohub
 log
+
+.idea
