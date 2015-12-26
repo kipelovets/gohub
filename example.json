@@ -3,7 +3,7 @@
         {
           "Repo":"user/repo",
           "Branch":"master",
-          "Shell":"echo.sh"
+          "Shell":"/gohub/echo.sh"
         }
     ]
 }
